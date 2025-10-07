@@ -45,3 +45,34 @@ body {
 
     text-align: center;
 }
+
+@media  (max-width: 1024px) {
+  
+
+.groupcate{
+ align-items: flex-start !important;
+}
+.my-products-tab button{
+  width: 75px!important;
+        display: block;
+        word-break: break-word;
+      height: 70px;
+          border: 1px solid #cecece!important;
+    margin-bottom: 8px;
+}
+.my-products-tab{
+   overflow-x: hidden;
+    margin: 0!important;
+    overflow-y: auto;
+    border: 0!important;
+        height: 100%;
+}
+
+.my-tabs.fixed{
+      width: 100%;
+      position: relative;
+    flex-direction: row!important;
+}
+
+
+}
