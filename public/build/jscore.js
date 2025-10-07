@@ -4,7 +4,8 @@ var appconfig={
        shop_id :"",
       type: "ban-hang",
       id_outlet: "0",
-      id_pos: ""
+      id_pos: "",
+      domain:"https://acuamientay.click/",
 };
 var CURRENCY = "đ";
 window.AppRequest = (function(win){
@@ -465,7 +466,7 @@ function IP(){
 
   function site_url(url){
 
-    return url.includes("http")?url:"/"+url;
+    return url.includes("http")?url:appconfig.domain+url;
 
   }
 
