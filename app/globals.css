@@ -46,9 +46,25 @@ body {
     text-align: center;
 }
 
-@media  (max-width: 1024px) {
-  
+.my-tabs.fixed{
+      flex: 1;
+          overflow: hidden;
+      width: 100%;
+      position: relative!important;
+     
+}
 
+.desktop-inv{
+  flex:1;
+}
+
+@media  (max-width: 1024px) {
+
+      #Login .leftcol {
+                flex-direction: column;
+      }
+
+/*
 .groupcate{
  align-items: flex-start !important;
 }
@@ -68,11 +84,7 @@ body {
         height: 100%;
 }
 
-.my-tabs.fixed{
-      width: 100%;
-      position: relative;
-    flex-direction: row!important;
-}
 
+*/
 
 }

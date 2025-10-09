@@ -1362,8 +1362,41 @@ window.onload = function(){
     document.querySelector(".imgbox").innerHTML =`<img src="${AppRequest.logo()}" width="125" alt="">`
 };
  
-LoadJS(root+"app.min.js?i=1&t=1759833448").then(function(){ 
+function setupTheme(){
+    (function(win){
+        var key = "setting_staff";
+        var settings = storage(key); 
+        win.AClient = {
+            settings: settings||{
+                synce_takeaway:1,
+                allow_print:1,
+                socket_url:'',
+                html_print:''
+            },
+            save : function(){
+                storage(key,this.settings); 
+            }
+        };
+        if(win.AClient.settings.html_print){
+            win.printTempate = decodeHTMLEntities(win.AClient.settings.bill_80||win.AClient.settings.html_print);
+        }
+        
+        
+
+        $(document).on("onUserLogout",function(e){
+          storage(key,'{}'); 
+        });
+    })(window);
+
+}
+
+LoadCSS(root+"app.min.css?t=1760009170").then(function(){
+   LoadJS(root+"app.min.js?i=1&t=1760009170").then(function(){ 
     $("body").append(htmlbody());
+
+
+    setupTheme();
+
 
     $(document).on("onApp",function(){ 
         window.localStorage.setItem("_logo",AppRequest.logo());
@@ -1373,9 +1406,9 @@ LoadJS(root+"app.min.js?i=1&t=1759833448").then(function(){
 
       $("body").addClass("loaded");
 
-  // LoadCSS(root+"/font.css?t=3",function(){});
+      LoadCSS(root+"/font.css?t=3",function(){});
+   });
 });
- 
 
 
 
