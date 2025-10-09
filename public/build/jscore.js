@@ -1,283 +1,204 @@
-var matchs = new RegExp("v1\/([0-9a-z]+)\/([^\/\?]+)\/(.*)", "g").exec(document.location.pathname);
+
 var appconfig={
-     
-       shop_id :"",
-      type: "ban-hang",
-      id_outlet: "0",
-      id_pos: "",
-      domain:"https://acuamientay.click/",
+      domain:"https://acuamientay.click/", 
+      shop_id:"20250820220954",
+        logo : "https://cdn-icons-png.flaticon.com/128/12679/12679211.png",
+        banner : "https://images.unsplash.com/photo-1707343848610-16f9afe1ae23?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDF8MHxlZGl0b3JpYWwtZmVlZHwxfHx8ZW58MHx8fHx8",
+        title : "",
+        address : ""
 };
-var CURRENCY = "đ";
-window.AppRequest = (function(win){
- 
-      var shop_id = appconfig.shop_id;
-      var type = appconfig.type;
-      var id_outlet = appconfig.id_outlet;
-      var id_pos = appconfig.id_pos;
-      return {
-         post : function(url,data,f){
-             data = data||{};
-             data = this.beforeSend(data);
+function site_url(url){
 
-             post(url,data,f,true);
-             return this;
-         },
-         beforeSend : function(data){
-           data.shop_id =  shop_id;
-           data.id_outlet = id_outlet;
-           data.id_pos = this.id_pos || AppConfig.id_pos;
-           return data;
-         },
-        fullscreen: function () {
+  return (document.baseURI.includes(document.location.origin)?("/"):document.baseURI)+url;
 
-            var elem = document.getElementById("appin");
+}
 
-            if (elem.requestFullscreen) {
+function site_url_ajax(url){
 
-              elem.requestFullscreen();
+  return appconfig.domain+(url);
 
-            } else if (elem.webkitRequestFullscreen) { 
+}
 
-              elem.webkitRequestFullscreen();
+(function(win){
+    var list={};
+    win.promise= {
+       add : function(a){
+          var id = Date.now();
+          list[id] = a;
+          a.then(function(){
+            list[id] =1; 
+            promise.onUpdate(Object.values(list).filter(function(v){
+              return v==1;
+            }).length,Object.keys(list).length);
+          });
+       },
+       post : function(url,data,f){
+           return new Promise(function (done) {
+            post(url,data,function(r){
+              f(r);
+              done({url:url,data:data,response:r});
+            },true); 
+          });
+       },
+       onUpdate : function(completed, total){
+         console.log(completed + '/' + total);
+       }
+    };
+})(window);
 
-            } else if (elem.msRequestFullscreen) { 
+(function(win){
 
-              elem.msRequestFullscreen();
-
-            }
-
-          },
-        pr : function(f){
-          site_url_ajax("api/setting/pr/").post(function(res){
-            if(typeof res=="object"){ 
-              //override
-              window.AppConfig = $.extend(window.AppConfig||{},res,true);
-
-              if(f)f();
-            }
-            
-         });
-
-        },
-
-        shop_id:shop_id,
-        id_outlet:id_outlet,
-        type:type,
-        path : function(url){
-            var a = this.shop_id.split("");
-            var p = a.splice(0,4).join("")+"-"+a.slice(0,2).join("")+"-"+a.slice(0,2).join("");
-            return site_url((AppConfig.token?AppConfig.token+"/":"")+p+"/"+(url||""));
-        },
-        id_pos:id_pos, //tram pos in outlet
-        changeOutlet : function(){
-           //now open select picker
-          "ManageOutlet".navigate();
-        },
-        config : function(f){
-           if(window.AppConfig){
-             f(window.AppConfig);
-           }else{
-             setTimeout(function(){
-                 window.AppRequest.config(f);
-             },1500);
-           }
-        },
-        logout : function(){
-           this.shop_id =null;
-           this.id_outlet =null;
-           window.AppConfig ={};
-           storage("config","");
-           document.location.reload();
-           return this;
-        },
-        login : function(data){
-            "Login".navigate(data);
-           return this;
-        },
-        ping : function(f){
-            //ping heart beat
-            site_url_ajax("api/storepos/ping/").post({},function(r){ }); 
-            return this;   
-        },
-        heartbeat : function(f){
-            //ping heart beat
-            post(site_url_ajax("api/admin/ping"),{},function(r){
-                 console.log(r);
-                 $(".adminnotices").remove();
-                 if(r.notices && r.notices.length){
-                   $("body").append(`<div class='adminnotices'>
-                      ${JSON.stringify(r.notices)}
-                    </div>`);
-                 }
-                 //logout
-                 if(r.logout==1){
-                    document.location.reload()
-                 }
-
-                 $(document).trigger("Ping",[r]);
-              },true); 
-            return this;   
-        },
-        logo : function(f){
-            var logo = "images/logo.png?t=1";
-            if(window.AppConfig && AppConfig.setting.pr){
-                logo = AppConfig.setting.pr?AppConfig.setting.pr.logo:"images/logo.png?t=1";
-                window.localStorage.setItem("_logo",logo);
-                return logo;
-            } 
-            logo = window.localStorage.getItem("_logo")|| logo; 
+  win.AppRequest ={
+    color : function(color){
+        this.cache.storage("_theme",color);
+        $("body").attr("data-color",color);
+        return this;
+    },
+    logo : function(f){
+        var logo = "images/logo.png?t=1";
+        if(win.AppConfig && AppConfig.setting.pr){
+            logo = win.AppConfig.setting.pr?AppConfig.setting.pr.logo:"images/logo.png?t=1";
+            win.localStorage.setItem("_logo",logo);
             return logo;
-        },
-        loadRoute: function(name,options){
+        } 
+        logo = win.localStorage.getItem("_logo")|| logo; 
+        return logo;
+    },
+    scan : function(){
+        this.post(this.site_url_ajax("api/user/scan/"),{},function(r){
+            AppConfig = $.extend(AppConfig,r.data,true);
+        });
+        return this;
+    },
+    share : function(s){
+       win.Share(s||`Bạn đang chia sẽ  ${this.site_url("?ref="+this.getUser().barcode)}`);
+       return this;
+    },
+    open : function(data){
+        return new Promise(function(a,b){
+            if(win.openWindow){
+               var i= openWindow(data);
+               a(i);
+            }else{
+                win.open(typeof data=="string"?data:data.url);
+            }
+        });
+        return this;
+    },
+     site_url : function(url){
+       return AppConfig.setting.server_pr+(url||"");
+    },
+    site_url_ajax : function(url){
+       return "/"+(url||"");
+    },
+    goHome : function(){
+        if(win.closeAll){
+            closeAll();
+        }
+        bootbox.hideAll();
+        $('.modal').modal('hide').remove();
+    },
+    getUser : function(){
+        return userSDK.getUser();
+    },
+    login : function(f){
+        userSDK.open(f);
+      return this;
+    },
+    logout : function(f){
+        bootbox.confirm(`<div class='text-center'><img width='65' src='https://cdn-icons-png.flaticon.com/128/16205/16205076.png' /></div>
+          <h3>Yêu cầu đăng xuất.</h3>`,function(ok){
+              if(ok){
+                 userSDK.logout(function(){
 
-              
-           post("/view/"+name,{},function(r){
-               if(r.code){
-                // console.log(r);
-                 //css,js,html
-                 $("body").append(`<style id="123">${r.css}</style> <script id="1234">${r.js}<\/script>`);
-
-                 //append menu to ui
-                 $(".tabsmenu.tab").append(r.menu.map(function(v){
-                   return `<li data-target="${v.id}"> ${v.icon.includes("https:")?`<img src="${v.icon}" width="24" height="24" />`:v.icon} <span>${v.name} </span> </li>`;
-                 }).join(""));
-               }
-            },true);
-        },
-        loadRole : function(f){
-            var config = win.AppConfig;
-
-         
-
-          if(win.user){
-
-             
-            $.blockUI({message:`<div style="text-align:center;"><div><img width="45" src="https://cdn-icons-png.flaticon.com/128/2859/2859277.png" /></div><p>Đang tải các module cần thiết. Vui lòng chờ trong giây lát...</p></div>`});
-
-            $(document).on("Modules_Ready",function(e){
-                //for dev loader
-                var host = document.location.host;
-                if(!host){
-                    //is file access
-                    var a = document.location.pathname.split("/");
-                    a.pop();
-                    var dir = "file://"+a.join("/");
-                    LoadJS(dir+"/build/core.min.js",function(){});
-                    LoadCSS(dir+"/build/core.min.css",function(){});
-                }else if(!document.baseURI.includes(host)){
-                    //is other domain access 
-                     var a = document.location.pathname.split("/");
-                    a.pop();
-                    var dir = document.location.origin+"/"+a.join("/");
-                    LoadJS(dir+"/build/core.min.js",function(){});
-                    LoadCSS(dir+"/build/core.min.css",function(){});
-                }
-            });
-            
-       
-          // if(load)return;
-          //load role admin page
-            post(site_url_ajax(AppRequest.BUILDDEV?"api/admin/debug/":"api/admin/role/"),{cached:0},function(r){
-              $.unblockUI();
-
-               if(r.code){
-              
-
-                 if( win.user.role=="admin"){
-
-                  
-                  // $(".managepage").show().find("a").attr("href",`https://f7.donggiatri.com/users/demo/pos/dist/?shop_id=${AppConfig.shop_id}&passkey=${window.user.passkey}`);
-                  $(".listproduts").addClass("tools");
-
-                  
-                }
-             
-
-                // console.log(r);
-                 //css,js,html
-                 $("body").append(`<style id="css${Date.now()}">${r.css}</style> <script id="js${Date.now()}">${r.js}<\/script>`);
-                 //trigger for all excute
-                 $(document).trigger("onModule",[]);
-
-                 //append menu to ui and append to group
-                 r.menu.map(function(v){
-                    if(v.display==1){
-                    var group = v.group||"other";
-                    $("[data-group='"+group+"']").append(`<li data-module="${v.module||''}" data-target="${v.id}"> ${v.icon.includes("https:")?`<img src="${v.icon}" width="24" height="24" />`:v.icon} <span>${v.name} </span> </li>`); 
-                  }
                  });
-
-                 if(win.Modules){
-                   win.Modules.menu = $.extend(win.Modules.menu||{},r.menu,true);
-                 }
-
-                 win.user.roles = r.roles;
-                 win.user.has_role = function(role){
-                    return this.roles.includes(role);
-                 };
-                 win.user.has_access = function(role){
-                    return this.roles.includes(role);
-                 };
-
-                  /*
-                    listen role global to remove access
-                    <button class="btn btn-primary roleaccess">Cập nhật</button>
-                   */
-                  $(document).on('init.bs.modal',".modal", function (e) {
-                      var who = $(e.currentTarget); 
-                      if(win.user&&!win.user.has_role('admin')){
-
-                         who.find(".roleaccess").remove();
-                      }
-                  });
-
-
-                StorePos.check();
-
-                  
-                 //check dev
-                 if(AppRequest.BUILDDEV){
-                  AppRequest.BUILDDEV();
-                 }
-
                  if(f)f();
+              }
+            });
+      return this;
+    },
+    downloadApp : function(f){
+        bootbox.confirm(`<div class='text-center'><img width='65' src='https://cdn-icons-png.flaticon.com/128/16205/16205076.png' /></div>
+          <h3>Không hỗ trợ tính năng!.</h3>
+          <div>Quét Qrcode không hỗ trợ trên hệ thông website. Vui lòng tải app để sự dụng tính năng này.</div>`,function(ok){
+              if(ok){
+                 window.open("https://play.google.com/store/apps?hl=en");
+              }
+            });
+      return this;
+    },
+     post : function(url,data,f){
+         data = data||{};
+         data.shop_id = this.shop_id;
+
+         promise.add(new Promise(function(a,b){
+            if(win.AppConfig && AppConfig.passkey){
+                data.auth_hash = AppConfig.auth_hash;
+                data.auth = true;
 
 
-                 $(document).trigger("Modules_Ready",[]);
+                $.ajax({
+                    headers: {
+                        'auth-token':AppConfig.passkey
+                    },
+                    url: url,
+                    type: "POST",
+                    data: data,
+                    async: true,
+                    success: function(u) {
+                        try {
+                            u = JSON.parse(u.trim())
+                        } catch (_) {}
+                        f(u);
 
-               }else{
-                var dialog = bootbox.dialog({
-                    title: 'Thông báo',
-                    message: `
-                        <div class="text-center">
-                        <div><img width="75" height="75" src="https://cdn-icons-png.flaticon.com/128/1691/1691940.png" /></div>
-                        <p>Tài khoản của bạn đã đăng nhập ở thiết bị khác. Hệ thống tự đăng xuất. Chúng tôi xin lỗi vì sự bất tiện này.</p>
-
-                        </div>`,
-                    size: 'large',
-                    buttons: { 
-                        ok: {
-                            label: "Xác nhận",
-                            className: 'btn-info',
-                            callback: function(){
-                                logoutUser();
-                            }
-                        }
+                        a({url:url,data:data,response:u});
+                    },
+                    error: function(u, _, E) { 
+                        this.success(u.responseText);
                     }
                 });
-                 
-               }
-            },true);
+                
+             
+             }else{
+                 post(url,data,function(r){
+                      f(r);
+                    a({url:url,data:data,response:r});
 
+
+                 },true);
+             }
+        
             
-            
-          }
+        }));
 
          
-         
-         
-        },
-        cache : (function(win,key){
+         return this;
+     },
+     beforeSend : function(data){
+       data.shop_id = this.shop_id;
+       return data;
+     },
+     shop_id:appconfig.shop_id,
+     config : function(data,f){
+        var u = this.getUser();
+        if(u){
+            //au assign from user center
+            data.barcode = u.barcode;
+        }
+        
+        this.post(site_url_ajax("api/customer/auth/"),data,function(r){
+            if(r.code){
+                win.AppConfig = $.extend(win.AppConfig||{},r,true);
+             
+                if(f)f(AppConfig);
+            }else{
+                if(f)f(null);
+            }
+ 
+        });
+        return this;
+     },
+     cache : (function(win,key){
    function md5(inputString) {
     var hc="0123456789abcdef";
     function rh(n) {var j,s="";for(j=0;j<=3;j++) s+=hc.charAt((n>>(j*8+4))&0x0F)+hc.charAt((n>>(j*8))&0x0F);return s;}
@@ -328,7 +249,7 @@ window.AppRequest = (function(win){
           mixedcache = {};
       }
        
-      return function(){
+      return function(f){
              $.ajaxPrefilter(function (options, originalOptions, jqXHR) {
         
               var auth =$('[name="auth-token"]').attr("content");
@@ -359,14 +280,16 @@ window.AppRequest = (function(win){
                   }catch(e){}
                  
 
-                  win.localStorage.setItem(key, JSON.stringify(mixedcache));
+                  save();
                   var responseData = data?(typeof data==="object"?JSON.stringify(data):data.toString()):"";
                   
                   if (typeof success ==="function") success(data,textStatus);
               };
           // }
               }
-          
+          function save(){
+            win.localStorage.setItem(key, JSON.stringify(mixedcache));
+          }
           AppRequest.cache= {
              on : function(e,f){
                 $(document).on("cache_"+e,f);
@@ -375,1049 +298,615 @@ window.AppRequest = (function(win){
              trigger : function(e,args){
                $(document).on("cache_"+e,args||[]);
                 return this;
+             },
+             storage : function(k,v){
+                if(!v){
+                    return mixedcache[k]||"";
+                }
+                mixedcache[k]  = v;
+                save();
+                return this;
              }
           };
+
+          if(f)f();
       }); 
    }; 
       
-  })(window,"ajax"+document.location.host.replace(/[^a-zA-Z0-9]/ig,""))
-      };
-    })(window);
-  //////////////Build////////////////
+  })(window,"ajax"+document.location.host.replace(/[^a-zA-Z0-9]/ig,"")),
+     ready : (function(){
+         
+        var T= function(f){
+            if(win.AppConfig){
+                if(f)f();
+                return;
+            }else{
+                T.ff.push(f);
+            }
+        };
+        T.ff = [];
+        return T;
+     })(),
+     pr : function(f){
+        var me = this;
+        
+        
+        this.post(site_url_ajax("api/setting/pr/"),{},function(r){
+            win.AppConfig = $.extend(win.AppConfig||{},r,true);
+            $(document).trigger("AppConfig",[AppConfig]);
+            if(f)f(r);
+
+            if(me.ready.ff){
+                me.ready.ff.map(function(v){
+                    if(typeof v=="function"){
+                        v(AppConfig);
+                    }
+                });
+                delete me.ready.ff; 
+            }
+
+            var options ={
+                  className:"special",
+                  size: 'large',
+                  buttons: {
+                       
+                      ok: {
+                          label: "Đóng",
+                          className: 'btn-info',
+                          callback: function(){
+                              console.log('Custom OK clicked');
+                          }
+                      }
+                  }
+            };
+
+            var popups  = AppConfig.popup||[];
+//             if(popups.length==0){
+//                 popups.push({
+//                     title:"VPS Gi&aacute; Rẻ 799K/Năm &ndash; Vận h&agrave;nh web mượt m&agrave;",
+//                     content:`<p>VPS Gi&aacute; Rẻ 799K/Năm &ndash; Vận h&agrave;nh web mượt m&agrave;</p>
+
+// <p><img alt="💼" height="16" referrerpolicy="origin-when-cross-origin" src="https://static.xx.fbcdn.net/images/emoji.php/v9/tac/2/16/1f4bc.png" width="16" /> Bạn l&agrave;m web, bạn hiểu: tốc độ v&agrave; uptime l&agrave; sống c&ograve;n! Nhưng VPS tốt thường gi&aacute; cao, VPS gi&aacute; thấp th&igrave; hỗ trợ yếu, downtime li&ecirc;n mi&ecirc;n...</p>
+
+// <p><img alt="🎯" height="16" referrerpolicy="origin-when-cross-origin" src="https://static.xx.fbcdn.net/images/emoji.php/v9/t4f/2/16/1f3af.png" width="16" /> Giải ph&aacute;p VPS vSan ESA &ndash; Mạnh mẽ, hiệu năng vượt trội!</p>
+
+// <p>🖧 2 vCPU Intel Xeon Gold</p>
+
+// <p>🖧 RAM 2GB &ndash; ph&ugrave; hợp web vừa &amp; nhỏ</p>
+
+// <p>🖧 SSD NVMe U.2 30GB &ndash; lưu trữ si&ecirc;u tốc</p>
+
+// <p>🖧 Băng th&ocirc;ng kh&ocirc;ng giới hạn</p>
+
+// <p>🖧 01 IPv4 ri&ecirc;ng &ndash; tối ưu SEO &amp; bảo mật</p>
+
+// <p>🖧 Miễn ph&iacute; chuyển dữ liệu từ hosting kh&aacute;c</p>
+
+// <p>🖧 Uptime cam kết 99.9%, support 24/7</p>
+
+// <p><img alt="👉" height="16" referrerpolicy="origin-when-cross-origin" src="https://static.xx.fbcdn.net/images/emoji.php/v9/tf0/2/16/1f449.png" width="16" /> Li&ecirc;n hệ với nh&acirc;n vi&ecirc;n kinh doanh &ndash; nhận th&ecirc;m ưu đ&atilde;i 10% cho năm đầu</p>
+
+// <p><img alt="💸" height="16" referrerpolicy="origin-when-cross-origin" src="https://static.xx.fbcdn.net/images/emoji.php/v9/t1/2/16/1f4b8.png" width="16" /> Chỉ 799K/Năm, kh&ocirc;ng ph&aacute;t sinh, kh&ocirc;ng tăng gi&aacute;</p>
+
+// <p><img alt="🎁" height="16" referrerpolicy="origin-when-cross-origin" src="https://static.xx.fbcdn.net/images/emoji.php/v9/t23/2/16/1f381.png" width="16" /> Tặng th&ecirc;m 2 th&aacute;ng FREE khi chuyển từ nh&agrave; cung cấp kh&aacute;c</p>
+
+// <p><img alt="👉" height="16" referrerpolicy="origin-when-cross-origin" src="https://static.xx.fbcdn.net/images/emoji.php/v9/tf0/2/16/1f449.png" width="16" /> Xem chi tiết tại: <a attributionsrc="/privacy_sandbox/comet/register/source/?xt=AZUTSazKHTb6HekF1x5fyy5uu1xwhpYYcXAuvOWMqFIzStCLM15o-Uu5Ny-KI22nyY0nToahzpVpTXWDR9i6tZOJbnPsQx-GNW5rqHad2qwoF1089bAtLkHtTBGZKhSGAe8zzcdkVLrZG-K6q2LjGcV3-Gv8W_Wujdqvhj0BcYQPpGhUaaO1TdROyBIub_WdnoxXc7QSqOGL8t-gjDN3hFHbuP8ce-jfgmgo--HHg-3iNzYce16GaOMZ8UrzOJOAvUJO226Pg5tuRXz7sfm-LyBxvhkRJCM9NdzBRWURkzd9-ol5t-oCO0a9ndLin2fWwQxUH8LQUhaF1nHvZDJ3ym5HkLh_7TIAdRyQf8BHWXWM28tNSkb1Ju6iQmH3WdQcCWBN_ofKnGK7kVw0HlqNnEtOlIvrbb0BaIS3W4mbPKyTPdsGS7DsERx_gW3XqstCJtoOWW2eQ0POMeEzweCKIM0x4OvvHGDt0MYixgHR7dmEpqF_xGwagDZDemveGQG5aEpywLDkWo1vIpCMaaWXL53SEcBJCDvabBYPsDnUB3XT57fejwbfcGuHVFLuLciIcZp5rLKFYwBUUW5wUJWIopgJtKlDqIsSvxZW4sLHmJTBZ5YLv5stiW5jMFiC5Z7Jt01wsKjwWKxVvE7-hC4lzUNJBtjAmtqip1TPthOUXdi62wJ0vDuYStVtrfYuzr7llSxf_O0lYRGDQKrli4isfs07OleidNAHUVVQTBvO0yt2zjcRlw63B-i7xQK3NCbXVkUl8nubd-8w5NCh_y5uimIGdaFM6-wtw7i9gwaQmzLHCQLjZN06-D1bNNCY4SdfI8McWfD1-KqBRvMr2pERoDHw3jnztRPMwo37pMJCM2zlRVRyHXNfw486DeZ9t7NU2-grQZcdCmw22PXFxu4KeeUG7t3PZUt9piZXE6Xpwa1sD_495KBGQEb21fC7jgT4KUKkG5nP-plgeJTUCtrADKeC8ieYTI7bXQecLYlHfYH-7Kkv1HNyJEglEcCIOGXNG04LBTRHAVgBPrqqKhrClSWmQqXmVMCubOdgnP5krGL-RcQnvdxd29wENxfJrdgoQR3A8__gjme7pIPiFY3nGIxlhnA8WFxRZ8M43wQSWRF4BNIwnj0Ie3Gor--uf6UqrzpbMvM2WmM5V5eLpBrsimkBMzQ3k6fHunbctRCaqK_Ieyse4TKFkvKfYf6XHEDqgIIxCl4DvF8MXg7ADLIrUqW246uWFzwT2CzJKm_0_2mhlqS7edGiWnh7_0JGPGtGt46AW7oSgYQcw_sTN6AF78xMncVg1nycu-UtIzOqMPebirkrX15hH-aBiAywhGATA73Ov2S0IRsaXHbX17Qnt-EtpDDmhZXrtLPC9_fz7rUj7hPe07a0funwJlCxfN_FoDJpj8lvprE7fhSE9sCOOKbYXe1--rXq0n_lyaMHIsLUQfV2VFITxJrjmM8Asyr6jRh4iYCSAi4BhFadlf9mONg1XQ7BQmrmQrgqDOQbClbhoPCuLQ66O2MwqopWzmyNtPRuLJhOJVq2Dfr58VaR-6n-kFgdbAXwPaSdKXWqGEHsYZFt1R8N8O04JSUydu81BvegXoBDVvEBsZ4ZbeAd-tcPxeo0DEPhLlyheBHvB63Glg" href="http://eztech.vn/vps-gia-re/?fbclid=IwZXh0bgNhZW0CMTAAYnJpZBExMnpOeFhxUG14QllZdXFNQQEeQOmUWhbXW9BbWiwluRg8DZHGZt7v9kNV7-C5ozEGbwVHoYK1suwZpX2TS9A_aem_-ymKHNRORH6P7mkrLitKCA" rel="nofollow noreferrer" role="link" tabindex="0" target="_blank">eztech.vn/vps-gia-re/</a></p>
+
+// <p><img alt="📩" height="16" referrerpolicy="origin-when-cross-origin" src="https://static.xx.fbcdn.net/images/emoji.php/v9/t5f/2/16/1f4e9.png" width="16" /> Inbox ngay để được tư vấn miễn ph&iacute; v&agrave; chốt gi&aacute; tốt nhất!</p>
+
+// <p><img alt="📍" height="16" referrerpolicy="origin-when-cross-origin" src="https://static.xx.fbcdn.net/images/emoji.php/v9/tcc/2/16/1f4cd.png" width="16" /> C&Ocirc;NG TY TNHH C&Ocirc;NG NGHỆ EZ</p>
+
+// <p><img alt="🏢" height="16" referrerpolicy="origin-when-cross-origin" src="https://static.xx.fbcdn.net/images/emoji.php/v9/t97/2/16/1f3e2.png" width="16" /> Địa chỉ: 72 Đường số 6, KDC Cityland Park Hills, P.10, Q.G&ograve; Vấp, TP.HCM</p>
+
+// <p><img alt="📩" height="16" referrerpolicy="origin-when-cross-origin" src="https://static.xx.fbcdn.net/images/emoji.php/v9/t5f/2/16/1f4e9.png" width="16" /> Inbox để được tư vấn miễn ph&iacute; ngay h&ocirc;m nay!</p>
+
+// <p><img src="https://scontent.fsgn5-14.fna.fbcdn.net/v/t39.30808-6/517747285_122160341786523316_920176795896177425_n.jpg?_nc_cat=106&ccb=1-7&_nc_sid=127cfc&_nc_ohc=g-ZhiU4AnVAQ7kNvwF5rdHK&_nc_oc=Adn7Y799KmheJyHUh3tCS94WMvnoX-BLXEIF5zkMdS5tKu7oVtz7iT0YJe9G7QHleluDFnDHlQ2W-5BxQUMt5H1S&_nc_zt=23&_nc_ht=scontent.fsgn5-14.fna&_nc_gid=OMaQRHyeGnDoaNvf97DekQ&oh=00_AfTEa_jj2Tgd0vehMaRAAJV16zWZomqMDiMnV6QVcHyFMg&oe=687680CF" /></p>`
+
+//                 });
+//             }
+
+            if(AppConfig.setting.pr&&AppConfig.setting.pr.popup){
+             popups.push({
+                title:AppConfig.setting.pr.popup.title||'A custom dialog with buttons and callbacks',
+                content: AppConfig.setting.pr.popup.content||"<p>This dialog has buttons. Each button has it's own callback function.</p>"
+             });
  
-AppRequest.cnd = function(){
-    var cnds =[];
-};
-AppRequest.buildRole = function(){
-  "api/admin/build/".api(function(r){
-
-  });
-};
-AppRequest.BUILDDEV = function(){
-     var historybuild ={
-
-    };
-
-   
-     $(document).on("onLogout",function(e,u){
-        historybuild={};
-        storage(historybuild,"");
-     }).on('shown.bs.modal','.modal', function (e) {
-        var page = e.target.id;
-        if(page!="ManageOutlet"){
-          historybuild.path =page ;
-          historybuild.data = page.pageData();
-
-          window.localStorage.setItem("historybuild",JSON.stringify(historybuild));
-        }
-          
-      });
-     
-      var n = storage("historybuild");
-     if(n){
-        n= JSON.parse(n);
-     }
-     historybuild  =$.extend({},n,true);
-
-     if(historybuild.path){
-        historybuild.path.navigate(historybuild.data);
-     }
-  };
- 
- 
-String.prototype.loaderdata = function(options){
-  var ele  = $(this.toString());
-
-  ele.addClass("loaderdata");
-  if(typeof options =="function"){
-     options();
-     setTimeout(function(){
-        ele.removeClass("loaderdata");
-     },2000);
-  }else if(typeof options =="object"){
-     options.url.post(options.data||{},function(r){
-        ele.removeClass("loaderdata");
-        if(options.callback){
-            options.callback(r);
-        }
-     });
-  }
-};
-String.prototype.loaderdataURL = function(url,data,f){
-  var ele  = $(this.toString());
-
-  ele.addClass("loaderdata");
-   
-  url.post(data||{},function(r){
-    ele.removeClass("loaderdata");
-    if(f){
-        f(r);
-    }
- });
-  
-};
-
-
-function IP(){
-
-    return "/";
-
-  }
-
-  function site_url(url){
-
-    return url.includes("http")?url:appconfig.domain+url;
-
-  }
-
-  function site_url_ajax(url){
-
-    return site_url(url);
-
-  }
-
-
-
-   window.session = function(){
-
-    return "u_af";
-
-};
-  
-function site_url_pos(url){
-   return `${window.user.url}`+(url||"");
-}
-
-  
-   
-
-window.my_shop = function(){
-
-  return StorePos.config.name||StorePos.config.name_outlet;
-
-};
-
-window.my_outlet = function(){
-
-  return StorePos.config;
-
-};
- 
-
-  window.ui = function(modal,options){
-
-    options = $.extend({
-
-       empty : `<img src="images/empty.png"><br/>
-
-              <di>
-
-                Hiện chưa có thông tin.
-
-              </div>`,
-
-      loading:`<i class="fa fa-spin fa-cog"></i> Đang tải...`
-
-
-
-    },options,true);
-
-    modal = modal||$(".modal");
-
-    if(modal.find(".empty.ui").length==0){
-
-       modal.find(".modal-body").prepend(`<div class="empty ui">
-
-                ${options.empty}
-
-            </div> 
-
-            <div class="loading ui">
-
-              ${options.loading}
-
-            </div>`);
-
-    }
-
-    return {
-
-      empty : function(fun){
-
-        modal.find(".ui").addClass("hide");
-
-        modal.find(".empty").removeClass("hide");
-
-        modal.find(".loading").addClass("hide");
-
-        if(fun)fun()
-
-      },
-
-      data : function(fun){
-
-        modal.find(".ui").removeClass("hide");
-
-        modal.find(".empty").addClass("hide");
-
-        modal.find(".loading").addClass("hide");
-
-        if(fun)fun()
-
-      },
-
-      loading : function(fun){
-
-        modal.find(".ui").addClass("hide");
-
-        modal.find(".empty").addClass("hide");
-
-        modal.find(".loading").removeClass("hide");
-
-        if(fun)fun()
-
-      }
-
-    };
-
-  };
-  function simplePaging(page, range,count) {
-    //https://codepen.io/lorenzovngl/pen/xxKgJYm/
-    var str="";
-    if (page > 1) {
-      str+=('<li class="page-item"><a class="page-link" href="#' + (page - 1) + '">Previous</a></li>');
-    }
-    for (let i = 1; i <= count; i++) {
-      if (i == 1 && page - range > 1) {
-         str+=('<li class="page-item"><a class="page-link" href="#1">1</a></li>');
-        if (page - range > 2) {
-           str+=('<li class="page-item disabled"><a class="page-link" href="#">...</a></li>');
-        }
-      }
-      if (i >= page - range && i <= page + range) {
-        if (i != page) {
-           str+=('<li class="page-item"><a class="page-link" href="$' + i + '">' + i + '</a></li>');
-        } else {
-           str+=('<li class="page-item active"><a class="page-link" href=""#' + i + '"">' + i + '</a></li>');
-        }
-      }
-      if (i == count && page + range < count) {
-        if (page + range < count - 1) {
-           str+=('<li class="page-item disabled"><a class="page-link" href="#">...</a></li>');
-        }
-         str+= ('<li class="page-item"><a class="page-link" href="#' + count + '">' + count + '</a></li>');
-      }
-    }
-    if (page < count) {
-       str+=('<li class="page-item"><a class="page-link" href="#' + (page + 1) + '">Next</a></li>');
-    }
-    return `<ul class="pagination pag2">${str}</ul>`;
-  }
-
-
-
-function htmlbody(){
-      //for device
-    if(window.ADevice){
-        // alert(JSON.stringify(window.ADevice));
-
-        $("body").append(`<style class="device">
-            
-            .mainpos{
-              padding-bottom: ${window.ADevice.insets.bottom}px 0 !important; 
+                
             } 
-            </style>`);
-      // .modal-header,.modal-header.header{
-      //           padding-top: ${window.ADevice.insets.top}px!important;
-      //       }
-      //       .modal-footer{
-      //           padding-bottom:  ${window.ADevice.insets.bottom}px!important;
-      //       }
-    }
-
-    return `<div class="menu-tab">
-
-    <div class="menubody">
-
-    <div class="block-avatar _primary_bg">
-      <div class="flex-row">
-      <span class="closex" onclick="$('.menu-tab').toggleClass('active')"><i class="fa fa-times"></i></span>
-     <div data-target="MyAccount" class="flex-row">
-        <img class="images avatar" data-src="https://placehold.co/75x75/cecece/333/png">
-
-        <p>
-          <span>Xin chào</span> <br/>
-          <span class="username fullname">--</span>
  
-        </p> 
-      </div>
-
-     </div>
-     <div class="blocksearch">
-        --
-     </div>
-    </div>
-    <div class="reportall roleaccess _primary_bg">
-       <div class="lr">
-          <span class="dateoutlet">07/07/2025</span>
-          <span>
-              <input type="date" class="form-control" />
-          </span>
-       </div>
-          <div class="line flex-row" style='    justify-content: space-between;'>
-             <button class="btn btn-success no">
-                Đang xử lý
-               <div class='total_sale'>0</div> 
-             </button>
-             <button class="btn btn-info no">
-                Tiền cần thu
-               <div class='money_need_got'>0</div> 
-             </button>
-          </div>
-      </div>
-
-    <div class="body"> 
-      <div class="reportalla roleaccess text-center">
-          <div class="line items" style='    justify-content: space-between;'>
-             <div class="">
-                Doanh thu
-               <div class='total_sale'>0</div> 
-             </div>
-             <div class="">
-                Đơn hàng
-               <div class='total_inv'>0</div> 
-             </div>
-          </div>
-      </div>
-       
+            if(popups.length){
+     
+                   options.title = 'Thông báo';
+                   options.message = `<div class="swiper-container swiperpopup" style='height: 100%;'><div class="swiper-wrapper popups">${popups.map(function(v){
+                      v.content = new Handlebars.SafeString(decodeHTMLEntities(v.content));
+                     return Handlebars.compile(`<div class="swiper-slide popupitem">
+                        {{content}}
+                    </div>`)(v);
+                   }).join("")}</div><div class="swiper-pagination" style="position: absolute;bottom: 0;"></div></div>`;
+                   
+                 //go
+                var dialog = bootbox.dialog(options);
+                dialog.init(function(){
+                    var swiper = new Swiper(dialog.find(".swiperpopup")[0], {
+                        pagination: dialog.find(".swiper-pagination")[0],
+                        paginationClickable: true,
+                        parallax: true,
+                        speed: 600,
+                        autoplay: 3500,
+                        loop: true,
+                        grabCursor: true 
+                      });
+        
+                });
+            }
+        });
+        return this;
+     }
+  };
+})(window);
+    
       
+      function LoadCSS(e){return new Promise(function(n,t){var o=document.createElement("link");o.rel="stylesheet",o.href=e,document.head.appendChild(o),o.onload=function(){n(),console.log("CSS has loaded!")}})}function LoadJS(e){return new Promise(function(n,t){var o=document.createElement("script");o.type="text/javascript",o.src=e,document.head.appendChild(o),o.onload=function(){n(),console.log("JS has loaded!")},o.onerror=function(){}})}
 
-      <div class="allactions">
+var host = document.location.host;
+var root = "/build/";
+// var root = host.includes(".byethost")?"https://"+host+"/":"/v1/shopprofile/assets/";
+window.addEventListener("load", (event) => {
+  document.querySelector(".imgbox").innerHTML =`<img src="${AppRequest.logo()}" width="125" alt="">`
 
-      </div>
-      
-       
-    </div>
+ 
 
-    <div class="foot">
+     
+    LoadCSS(root+"mine.min.css?t="+Date.now()).then(function(){
+       LoadJS(root+"mine.min.js?i=1&t="+Date.now()).then(function(){ 
+         //{{coupon code "date"}}
+            Handlebars.registerHelper('coupon', function (code,date) {
+               if(!code)return "";
+               date = date||"30 April 2026";
 
-      <p>Hotline: <a href="tel:+8489 837 2448" style="color: #fff">+840000000</a></p> 
+                return new Handlebars.SafeString(`<div class="cardbox">
+                <div class="main">
+                  <div class="coupon-rate">
+                    <h1>1000€</h1>
+                  </div>
+                  <div class="vertical"></div>
+                  <div class="content">
+                    <h2>${code}</h2>
+                    <p>Valid till ${date}</p>
+                  </div>
+                </div>
+                <div class="copy-button">
+                  <p>Valid for this contract globally !</p>
+                  <button onclick="copyIt()" class="copybtn">USE IT !</button>
+                </div>
+              </div>`);
+            });
+             
+          AppRequest.cache(function(){
+              var color =  AppRequest.cache.storage("_theme")||"default";
+           $("body").attr("data-color",color);
+          });
 
-      <div style="text-align: center;">
-
-        <a href="#" style="font-size: 24px;color: #fff;" target="_blank">
-
-          <i class="fab fa-facebook-square"></i>
-
-        </a>
-
-        <a href="#" style="font-size: 24px;color: #fff;" target="_blank">
-
-          <i class="fab fa-youtube"></i>
-
-        </a>
-
-      </div>
-      <p>Phiên bản: <a href="/v1/cua-hang/">1.0</a></p>
-    </div>
-
-  </div>
-
-  </div>
-
-  <div class="mainpos _primary_bg">
-
-  
-
-  <div class="box-row-col flex home">
-
-    <div class="a-col">
-
-      <div class=" header">
-
-        <div class="flex-row iconleft">  
-
-          <i class="fa fa-search prosearchicon hidden-lg hidden-md" onclick="$('.searchmain').toggleClass('active')" aria-hidden="true"></i>
-
-          <i class="fa fa-bars show_menu visible-md visible-lg"></i> 
-
-          <img onclick="$('.menu-tab').toggleClass('active')" data-src="/images/logo.png" class="logo logoshop hidden-sm hidden-xs" style="width: 30px;height: 30px;">
-
-        </div>
-
-        <div class="tab-button">
-
-            <button type="button" style="    width: auto;margin-right:8px" class="btn btn-default pro active" data-tab="desktop-food"><i class="fa fa-book" aria-hidden="true"></i></button>
-
-            <button type="button" class="btn btn-default inv" data-tab="desktop-inv">
-              <i class="fa fa-shopping-cart" aria-hidden="true"></i>
-              <span class="badge" style="    position: absolute;"></span>
-            </button>
-
-
-            
-        </div>
-
-        <div class="text-right iconright">
-  
-          <span class="scanqrcode hidden-md hidden-lg"><i class="fa fa-qrcode" aria-hidden="true"></i></span>
+          //load language
+          if(window.initLanguage)initLanguage();
           
 
-          <span  data-target="MySetting" class=""><img src='https://cdn-icons-png.flaticon.com/128/3524/3524636.png' /><span class="hidden-sm hidden-xs"> Cài đặt</span></span>
+          main();
+          LoadCSS('https://accessbeta.donggiatri.com//assets/font.css?t=1').then(function(){});
 
-          <div class="dropdown visible-sm visible-xs" style="display:inline-block;    padding: 0;
-    margin: 0;
-    width: 50px;">
-            <button style="background-color:transparent;" class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-              <i class="fa fa-bars" aria-hidden="true"></i>
-            </button>
-            <div class="dropdown-menu" aria-labelledby="dropdownMenuButton" id="dropdownmobile">
-              
-            </div>
-          </div>
-      
-        </div>
-
-      </div>
-
-
-
-    </div>
-
-    <!--  -->
-
-    <div class="a-col a-auto" id="collapseTwo">
-
-        
-
-
-
-<div class="loading loading-tb" style="display: none"><i class="fa fa-spin fa-cog"></i> Đang tải bàn...</div>
-
-<div class="maincontent h100">
-
-  
-
-  <div class="row alldiv">
-
-   <div class="col-md-7 col-xs-12 desktop-tab desktop-food">
-
-      <div class="searchmain">
-
-        <div class="searchmainbarcode">
-
-          <button type="button" class="btn btn-primary btniconbarcode1 scanqrcode" style="height: 45px;"> <i class="far fa-barcode-read"></i> </button>
-
-          <input placeholder="Nhập barcode"  type="search" class="searchbarcode form-control hide" >
-
-        </div>
-
-        <div class="search-box" id="menusearch" style="width: 100%;">
-
-               <div style="background-image:url(https://access.donggiatri.com/svg/search.svg);" class="search"></div>
-
-               <input type="search" placeholder="Tìm kiếm: sản phẩm, barcode"  class="form-control">
-
-        </div>
-
-        <div class="">
-          <div class="dropdown showgridcol">
-
-              <button class="btn no btn-primary dropdown-toggle" type="button" data-toggle="dropdown"><i class="fa fa-table" aria-hidden="true"></i></button>
-
-              <ul class="dropdown-menu">
- 
-              </ul>
-
-            </div>
-        </div>
-
-        
-
-      </div>
-
-      <div class="my-tabs fixed">
-
-
-
-        <div class="groupcate flex-row">
-
-            <div class="desktop-menu flex simple-scroll scroll-tab my-products-tab">
-
-            <button type="button" class="btn btn-default mh active" data-id="featured">Nổi bật</button>
-
-            <!-- <button type="button" class="btn btn-default mh active" data-id="all">Tất cả</button> -->
-
-          </div>
-
-          <div class="actions">
-              <span data-modal="MyProductSaleCreateSimple" class="roleaccess">
-                <i  class="fa fa-plus-circle " style="font-size: 14px;"></i>
-              </span>
-          </div>
-
-        </div>
-
-        
-
-        <div class="bodyproducts">
-
-
-
-           <div class="listproduts loaderdata my-products row">
-
-              <div class="text-center effect" style="font-size: 14px;margin-bottom: 8px;"><i  style="font-size: 14px;" class="fa fa-spin fa-spinner"></i> Đang xử lý...</div>
-
-           </div>
-
-
-           <!-- <span data-modal="MyProductSaleCreateSimple" style="position: absolute;bottom:10px;right:10px;cursor: pointer;" class="roleaccess"><i class="fa fa-plus-circle" style="font-size: 14px;"></i> Sản phẩm</span> -->
-
-        </div>  
-
-      </div>
-
-   </div>
-
-   <div class="col-md-5 col-xs-12 desktop-tab desktop-inv">
-
-     <div class="orders">
-       <div class="flex-row">
-          <div class="simple-scroll scroll-tab actioninv flex"> </div>
-
-        <div class="no dd-new btn-inv btn btn-primary">
-
-           <i class="fa fa-plus-circle" style="font-size: 14px;"></i> 
-
-        </div>
-       </div>
-        
-
-        <div class="blockorder">
-
-          
-
-        </div>
-
-        <div class="actions show_action hide lr text-center"> 
 
            
 
-           <div class="text-right buttons">
+          $("body").addClass("loaded");
+           LoadJS("https://data.donggiatri.com/user.sdk.js?t=4343w53").then(function(){
+          
+             userSDK.getAuth().then(function(v){
+              user = v;
+              // alert(23432);
+              if(v){
+                var data = {barcode:v.barcode};
+                console.log(data);
+                 //try to send phone to check status for this user center
+                AppRequest.config(data,function(auth){
+                    if(!auth||auth.code==0){
+                        var v = AppRequest.getUser();
+                        var str=`<div class="msgicon pageproduct">
+                          <div class="flex-col center">
+                               
+                              <div class='flex'>
+                                    <p>Khách hành thân thiết</p>
+                                    <form>
+                                         <div style="min-height:250px">
+                                         <div style="text-align:center;">
+                                            <img src="${v.avatar}" onerror="this.src='https://cdn-icons-png.flaticon.com/128/3940/3940417.png'" width="75" height="75" style="display: inline-block;margin: 16px auto;border-radius: 50%;" />
+                                         </div>
+                                        <div class="lr">
+                                          <span>Họ và tên</span>
+                                          <span>${v.fullname||v.username}</span>
+                                        </div>
+                                         <div class="lr">
+                                          <span>Email</span>
+                                          <span>${v.email}</span>
+                                        </div>
+                                         <div class="lr">
+                                          <span>Địa chỉ</span>
+                                          <span>${v.address}</span>
+                                        </div>
+                                      </div>
+                                    </form>
+                                    <div class="msg"></div>  
+                              </div>
+                           </div>
+                        </div>`;
+                            var methods = tools();
+                            
+                            var settings={ 
+                                title : "Đồng bộ tài khoản",
+                                message :str,
+                                callback : function(dialog,ok){
 
-             <button class="btn btn-danger btn-cancel-payment mr" ><img src="https://cdn-icons-png.flaticon.com/128/1828/1828665.png" class="visible-xs visible-sm" width="24" height="24" /> <span>Huỷ</span></button>
+                                    if(ok){
+                                        methods.info("Đang xử lý...");
+                                        AppRequest.post("api/customer/register/",v,function(r){
+                                            methods.hide();
+                                            if(r.code){
+                                                if(r.passkey){
+                                                    AppConfig = $.extend(AppConfig,r,true);
+                                                }else{
+                                                    //now wait user for activate link
+                                                }
 
-             <button class="btn btn-primary btn-payment-quick mr"><img src="https://cdn-icons-png.flaticon.com/128/9428/9428503.png" class="visible-xs visible-sm" width="24" height="24" /> <span>Thanh toán</span></button>
- 
-           </div>     
+                                                bootbox.hideAll();
+                                            }
+                                        });
+                                    } 
+                                }
+                            };
+                            alertDialog(settings).then(function(dialog){
+                                methods.$ = dialog;
+                 
+                        });
+                    }
+                });
+     
+              }
+           });
+            userSDK.miss(function(list){
+                var abc =  Object.values(list)[0];
+                updateuser(abc,function(data){
 
+                });
+            });
+        });
+       });
+    });
+
+
+});
+
+
+function main(){
+
+     var slides =[
+        {
+            image:"https://blog.dktcdn.net/files/top-phan-mem-quan-ly-ban-hang-mien-phi-tot-nhat-hien-nay.png",
+            content:`<h2>Quản lý cửa hàng từ xa hiệu quả</h2>
+            <p>30 biểu đồ báo cáo chi tiết hoạt động kinh doanh, chi phí lãi lỗ, hàng tồn kho được gửi tới điện thoại của quản lý theo thời gian thực. Giúp bạn kiểm soát cửa hàng mọi lúc, mọi nơi ngay cả khi vắng mặt một cách tốt nhất</p>`
+        },
+        {
+            image:"https://blog.dktcdn.net/files/quan-ly-ban-hang-mien-phi-1.png",
+            content:`<h2>Quản lý hàng tồn kho dễ dàng.</h2>
+            <p> Quản lý hàng hoá theo mẫu mã, kích thước, mã vạch. Quản lý chặt chẽ các hoạt động nhập – xuất kho, kiểm soát công nợ khách hàng tốt nhất</p>`
+        },
+        {
+            image:"https://blog.dktcdn.net/files/quan-ly-ban-hang-mien-phi-2.png",
+            content:` <h2>Quản lý nhân viên chặt chẽ.</h2>
+            <p>Hỗ trợ quản lý và phân quyền cho nhân viên chặt chẽ. Giúp hạn chế tối đa vấn đề thất thoát, gian lận của nhân viên</p>`
+        },
+        {
+            image:"https://blog.dktcdn.net/files/quan-ly-ban-hang-mien-phi-4.jpg",
+            content:`<h2>Quản lý khuyến mãi, khách hàng.</h2>
+            <p>Tạo và quản lý các chương trình khuyến mãi như giảm giá, tặng kèm sản phẩm… Lưu trữ thông tin khách hàng theo họ tên, số điện thoại, lịch sử mua hàng nhằm hỗ trợ chiến lược chăm sóc, bán hàng upsell sau này</p>`
+        },
+        {
+            image:"https://blog.dktcdn.net/files/quan-ly-ban-hang-mien-phi-5.jpg",
+            content:`<h2>Quản lý chuỗi cửa hàng.</h2>
+            <p>Quản lý toàn bộ hoạt động kinh doanh của các chi nhánh trong toàn hệ thống một cách hiệu quả trên 1 tài khoản quản lý duy nhất!</p>`
+        } 
+    ];
+
+    $("body").append(`<div class="login-container">
+  
+  <div  class="login-form" >
+    
+     <input type="hidden" name="_token" value="$2y$10$lsZGKOIY6NU47gW9.DMIx.ZinE2F9J3hnrYcU5O2oPNj.Yd2eM0Ta" />    
+     <div class="infoshop">
+        <div class="bannerbg" style="background-image: url(${appconfig.banner});">
+        <div class="logo">
+        <img style="border-radius: 50%;" src="${appconfig.logo}" width="75" height="75" alt="">
         </div>
 
-     </div>
-
-   </div>
-
-  </div>
-
-</div>
- 
-
-  <!-- show notification for confirmation -->
-
-  <!-- <div class="hide tb-kitken-notify">
-
-    <div class="kitken-notify scroll">
-
-      <div class="block">
-
-        <span>Ngày tạo</span>
-
-        <span class="notranslate">{{created_date}}</span>
-
-      </div>
-
-      <div class="block">
-
-        <span>Bàn</span>
-
-        <span class="notranslate">{{name}}</span>
-
-      </div>
-
-      <div class="block">
-
-        <span>Tạm tính</span>
-
-        <span class="bold notranslate">{{total}}</span>
-
-      </div>
-
-      {{block_menu}}
-
-    </div>
-
-  </div> -->
-
-  <!-- item list menu -->
-
-<!--   <div class="block-menu-wrapper hide">
-
-    <div class="block-menu">
-
-      <div class="block"><span>Thời gian</span><span>{{date}}</span></div>
-
-      <div class="block"><span>Nhân viên</span><span>{{fullname_user}}</span></div>
-
-      <div class="customer"></div>
-
-      <ul style="list-style: decimal;padding: 8px 32px;border-radius: 8px;border: 1px solid #f1f1f1;">
-
-        {{menu}}
-
-      </ul>
-
-      <div class="block"><span>Tình trạng</span><span class="bold notranslate">{{status}}</span></div>
-
-      <div class="block"><span>Thành tiền</span><span class="bold">{{subtotal}}</span></div>
-
-      <div class="actions">
-
-        <button class="btn btn-danger btn-sm btn-delete">Xoá</button>
-
-      </div>
-
-    </div>
-
-  </div>
-
-
-
-  <div class="block-menu-wrapper-takeaway hide">
-
-    <div class="block-menu">
-
-      <div class="block"><span>Thời gian</span><span>{{date}}</span></div>
-
-      <div class="block"><span>Nhân viên</span><span>{{fullname}}</span></div>
-
-      <div class="customer"></div>
-
-      <ul style="list-style: decimal;padding: 8px 32px;border-radius: 8px;border: 1px solid #f1f1f1;">
-
-        {{menu}}
-
-      </ul>
-
-      <hr>
-
-      <div class="block"><span>Mã STT (Khách hàng giữ)</span><span class="bold notranslate">{{stt}}</span></div>
-
-      <hr>
-
-      <div class="block"><span>Mã khay</span><span class="bold notranslate">{{tray}}</span></div>
-
-      <hr>
-
-      <div class="block"><span>Tình trạng</span><span class="bold notranslate">{{status}}</span></div>
-
-      <hr>
-
-      <div class="block"><span>Thành tiền</span><span class="bold">{{subtotal}}</span></div>
-
-      
-
-    </div>
-
-  </div>
- 
- 
-
-<!-- Inv 58mm -->
-
-<div class="print58mm hide" style="font-size: 12px; font-family: Arial"> </div>
- 
-
-       
-
-    </div>
-    <!--  -->
-
-
-    <div  class="a-col">
-
-     <div class="text-center support ">
-
-       
-       <span onclick="AppRequest.changeOutlet();">
-        <span class="hidden-sm hidden-xs">Truy cập cửa hàng</span>
-        <img data-src="https://cdn-icons-png.flaticon.com/128/10184/10184053.png" class="icon hidden-md hidden-lg">
-      </span>
-       
-
-        
-        <span onclick='$(".menu-tab").toggleClass("active")' class="PosMenu">
-           <span><img style='max-width: inherit;' data-src="https://cdn-icons-png.flaticon.com/128/12679/12679211.png" width="24" height="24" /></span>
-        </span>
-        
-
-          <!-- <span> <a href="#" style="color:#ccc">Chat support</a></span> -->
-
-      
-          <span data-target="PosShare">
-            <span class="hidden-sm hidden-xs">Chia sẻ</span>
-            <img data-src="https://cdn-icons-png.flaticon.com/128/2958/2958783.png" class="icon hidden-md hidden-lg">
-          
-          </span>
-       
- 
-     </div>
-
-    </div>
-
-  </div>
-
-  
-
-</div>
-
- 
-
-
- 
-
-<nav style="display:none">
-
-    <ul class="row tabsmenu">
-
-        <li class="back hide"><i class="fa fa-chevron-left" aria-hidden="true"></i><span>Quay lại</span></li>
-
-        <li class="active" data-target="home"><img src="images/ic/spa-trangchu.png" alt=""> <span>Trang chủ</span></li>
-
-        <li>
-
-          <img class="icon" src="images/ic/spa-lichhen.png" alt=""> <span> Lịch hẹn</span></li>
-
-        <!-- <li onclick="$('#MyTableMerge').modal()" style="position: relative;"> 
-
-          <span class="counter notranslate" style="top: 0px;right: 0px;background-color: red;display: block;color: #fff;"></span>
-
-          <img class="icon" src="images/board.png" alt=""> <span>Báo cáo</span></li> -->
-
-        <li data-target="MyHistorySale"><img class="icon" src="images/ic/spa-baocao.png" alt=""><span>Báo cáo</span></li>
-
-        <li data-target="#MyAccount"><img src="images/ic/spa-account.png" alt=""><span>Tài khoản</span></li>
-
-    </ul>
-
-</nav>`;
-}
-
-function stepactive(){
-  
-}
-/*
-uploadui("form",{
-    name:"image",
-    size:105,
-    callback: function(src){
-        form.find(".ass").val(src);
-    }
-});
- */
-
-function uploadui(form,options){
-     
-
-       var bar = null;
-
-       options.name.pickerImageResize({
-        url : options.url||site_url_ajax("api/upload/base64/"),
-        width:options.size||105, 
-        ready : function(src,file){
-            options.callback(src);
-            bar = $.progressCircle({parent:form,size:40});
-        },
-        onProgress : function(per){
-            per = Math.ceil(per*100);
-            bar.update(per);
-        },
-        callback:function(src,ac){
- 
-          if(ac=="end"){
-            bar.remove();
-            options.callback(src);
-          } 
-        }
-    });
-}
-
-
-
-function main(){ 
-    File.settings.upload= site_url_ajax("api/upload/file/")||"https://data.donggiatri.com/databases/upload.php";
-    File.settings.uploadbase64= site_url_ajax("api/upload/base64/")||"https://data.donggiatri.com/databases/upload.php";
-    File.settings.onData = function(data){
-        data.shop_id = AppConfig.shop_id;
-        data.id_outlet = AppConfig.id_outlet;
-        return data;
-    };
-    File.settings.onHeader = function(data){
-        data["auth-token"] =  AppConfig.passkey || window.user.passkey || $("meta[name='auth-token']").attr("content");
-        return data;
-    };
-
-     
-
-    $(document).on("click","[image-resize]",function(){
-       var me = this;
-       var form = $(me).closest("form");
-       if(form.length==0){
-          form = $(me).closest("div");
-       }
-       var parent = $(me).closest("div");
-       var name = $(me).attr("image-resize");
-       console.log(name);
-
-       var bar = null;
-
-       name.pickerImageResize({
-        url : File.settings.uploadbase64,
-        width:$(me).attr("image-size")||105, 
-        ready : function(src,file){
-            me.src=src;
-            bar = $.progressCircle({parent:parent,size:40});
-        },
-        onProgress : function(per){
-            per = Math.ceil(per*100);
-            bar.update(per);
-        },
-        callback:function(src,ac){
- 
-          if(ac=="end"){
-            bar.remove();
-            form.find("."+name).val(src);
-          } 
-        }
-      });
-    }).on("click","[image-picker-name]",function(){
-       var me = this;
-       //  <img class="avatar" image-picker-size="75" image-picker-control=".name" image-picker-name="image" image-picker-target="image" src="" ><br/>
-
-
-       File.pickerImage({ 
-        callback:function(src,callback){
-            var form = $(me).closest("form");
-           if(form.length==0){
-              form = $(me).closest("div");
-           }
-           var parent = $(me).closest("div");
-           var field = $(me).attr("image-picker-name");   
-
-           var name = field;
-           var control = $(me).attr("image-picker-control"); 
-            if(control){
-                name = form.find(control).val().make_slug();
-            }
-
-            me.src=src.base64;
-
-            var bar =  $.progressCircle({parent:parent,size:40});
-
-            //
-
-            uploadFile({file:src,name:name},File.settings.upload,function(r){
-                bar.remove();
-                form.find("."+field).val(r.url);
-            },{
-                onProgress: function(per){
-                    per = Math.ceil(per*100);
-                    console.log(per);
-                    bar.update(per);
-                }
-            }); 
-        }
-      });
-    });
-
-
-  f7Shortcode.add("webshare",function(data,page){
-       var url =site_url_pos();
-      return `<div class="white-view">
-          <p>Chia sẻ website</p> 
-          <div class="form-group sharewebsite flex-row">
+        <div class="action-right">
+          <div class="item" data-target="#RegisterCTV" data-toggle="modal">
+              <img src="https://cdn-icons-png.flaticon.com/128/4834/4834038.png" width=12 height=12 alt="">
                
-               <input type="text" id="xxx" name="xxx" class="form-control" value="${url}">
-               <button class="btn" data-copy="value="${url}"><i class="fa fa-clone" aria-hidden="true"></i></button> 
-          </div>
-      </div>`;
-  });
-
-   
-  //load pr and publci data app
-  $(document).ready(function(){
-     AppRequest.pr();
-
-
-  });
-
-  
-   $(document).on("onApp",function(e){ 
-
-      var popups = AppConfig.popup||[]; 
-      if(popups.length){
-          var dialog = bootbox.dialog({
-            className:"modal-flex1",
-            title :"Quảng cáo",
-            message:`<div style="    height: 100%;" class="swiper-container swiperpopup"><div class="swiper-wrapper popups">${popups.map(function(v){
-                      v.content = new Handlebars.SafeString(decodeHTMLEntities(v.content));
-                     return Handlebars.compile(`<div class="swiper-slide popupitem">
-                        <div class="body">{{content}}</div>
-                    </div>`)(v);
-                }).join("")}</div><div class="swiper-pagination"></div></div>`
-          });
-          dialog.init(function(){
-            dialog.find(".modal-header").addClass("header");
-            var swiper = new Swiper(dialog.find(".swiperpopup")[0], {
-                pagination: dialog.find(".swiper-pagination")[0],
-                paginationClickable: true,
-                parallax: true,
-                speed: 600,
-                autoplay: 3500,
-                loop: true,
-                grabCursor: true 
-              });
-
-        });
-      }
-
-   });
-  //watch and wait notice from admin
-  $(document).on("onApp",function(e,config){
-
-     
+           </div>
+           <div class="item openCart">
+              <img src="https://cdn-icons-png.flaticon.com/128/4290/4290854.png" width=12 height=12 alt="">
+              <span class="badge"></span>
+           </div>
+           <div class="item" onclick='AppRequest.share()'>
+              <img src="https://cdn-icons-png.flaticon.com/128/1828/1828874.png" width=12 height=12 alt=""> 
+           </div>
+        </div>
+    </div>
+        
+        <div class="flex-row">
+             <div class="infos flex">
+            <div style="border-radius: 8px;"> <strong class="shopname">${appconfig.title}</strong>  </div>
+            <div class="address">${appconfig.address}</div>
+        </div>
+        <div class="actions text-center flex-row">
+            <div>
+                <p>&nbsp;</p>
+                <a class="btnphone"><i class="fa fa-phone" aria-hidden="true"></i></a>
+            </div>
+           <div data-target="ShopComment" data-toggle="modal">
+               <p>10</p>
+              <p><i class="fas fa-comments" aria-hidden="true"></i></p>
+           </div>
+           <div class="ShopChat">
+               <p>&nbsp</p>
+              <p><img src="https://cdn-icons-png.flaticon.com/128/234/234148.png" width="24"></p>
+           </div>
+        </div>
+        </div>
+     </div>
        
-    
-    //ping
-      // setInterval(function(){
-      // AppRequest.heartbeat(function(){
-      // 
-      // });
-        
-    // },50*1000);
+     <div class="login-form-inner">
       
-  });
+        
+           <ul class="nav nav-pills scrollable mainmenu" role="tablist" data-tabs="tabs">
+           <li class="active"><a href="#shopmenu" data-toggle="tab">Sản phẩm</a></li>
+           <li><a href="#shopinfor" data-toggle="tab">Thông tin</a></li>
+           <li><a href="#shopdisccount" data-toggle="tab">Giảm giá</a></li>
+            
+           </ul>
+           <div class="tab-content">
+              <div role="tabpanel" class="tab-pane fade in active h100" id="shopmenu">
+                
+                <div class="flex-col h100 groupone">
+                    <div  class="groupcate groupactive"></div>
+                    <div class="groupproduct">
+                        <div class="infooutlet">
+                      
+                        </div> 
+                        <div class="menus"></div>
+                    </div> 
+                </div>
+                
+              </div>
+              <!--  -->
+             <div role="tabpanel" class="tab-pane fade" id="shopinfor">
+               <p class="phead">Thông tin</p>
+               <div class="description white-view" style="min-height: 100px;">
+                 <p>Đang cập nhật</p>
+               </div>
+               <div class="branchs white-view">
+                 <p class="phead">Chi nhánh</p>
+                 <div class="list scrollable">
+                    <p>Đang cập nhật</p>
+                 </div>
+               </div>
 
-  //checker step for admin or manager
-  $(document).on("onApp",function(){
-    var config = AppConfig;
-    var steps ={}; 
-     
+               <div class="white-view" style="min-height: 100px;">
+                <p>Bản đồ</p>
+                  <div class="mapbox">
+                   <p>Đang cập nhật</p>
+
+                    </div>
+               </div>
+               <!--  -->
+               <div>
+                <p>Một số hình ảnh cửa hàng</p>
+                  <div class="galleries">
+                   <p>Đang cập nhật</p>
+
+               </div>
+               </div>
+               
+             </div>
+              <!--  -->
+             <div role="tabpanel" class="tab-pane fade" id="shopdisccount">
+               <p>Đang cập nhật</p>
+             </div>
+              <!--  -->
+             <!-- <div role="tabpanel" class="tab-pane fade" id="shopaccount" style="    height: 100%;display: flex;flex-direction: column;justify-content: space-between;">
+                <div class="nouser" style="display:none">
+                   <p>Bạn chưa đăng nhâp</p>
+
+                   <button class="btn btn-primary btnregister" data-acc="Login">Đăng ký ngay</button>
+                </div>
+                <div class="hasuser" style="display:none">
+                   
+                   
+                   
+                </div> 
+                <div>
+                   <img src="https://tpc.googlesyndication.com/simgad/14201389944695667541?sqp=4sqPyQQ7QjkqNxABHQAAtEIgASgBMAk4A0DwkwlYAWBfcAKAAQGIAQGdAQAAgD-oAQGwAYCt4gS4AV_FAS2ynT4&rs=AOga4qnCc1YsoQIXAk2-f6PQmOtQuCxMHw" alt="">
+                </div>
+             </div> -->
+             <!--  -->
+           </div>
+      
+      
+ 
+       
+      
+    </div>
+
+
+    <div class="infocart">
+      <div class="flex-row">
+         <div>
+           <span>TC: <span class="total">0</span> - <span class="money">0</span></span>
+         </div>
+         <div class="btnpay" data-target="#ReviewOrder">
+           Thanh toán
+         </div>
+      </div>
+    </div>
     
+     
+      
+ 
+
+  </div>
+  <div class="onboarding">
+    <div class="swiper-container">
+      <div class="swiper-wrapper">
+        
+         ${slides.map(function(v,index){
+            return `<div class="swiper-slide color-${index+1}">
+                <div class="slide-image">
+                    <img src="${v.image}" loading="lazy" alt="" />
+                  </div>
+                  <div class="slide-content">
+                        ${Handlebars.compile(v.content)({})}
+                  </div> 
+            </div>`;
+         }).join("")} 
+      </div>
+      <!-- Add Pagination -->
+      <div class="swiper-pagination"></div>
+    </div>
+  </div>
+</div>
+<ul class=" tabsmenu tab groupactive"> 
+    <li class="active"><i class="fa fa-home" aria-hidden="true"></i> <span>Trang chủ</span></li>
+
+    <li data-acc="MyNotification"><i class="fa fa-bell-o" aria-hidden="true"></i> <span> Thông báo</span></li>
+
+    
+
+    <li class="qrcode btnqrcode"><i class="fa fa-qrcode" aria-hidden="true"></i><span></span></li>
+    <li data-acc="Orders"><i class="fa fa-first-order" aria-hidden="true"></i><span>Đơn hàng</span></li>
+
+    <li  data-acc="MyAccount"><i class="fa fa-user-o" aria-hidden="true"></i><span>Tài khoản</span></li>
+
+</ul>`);
+    //begin 
+  AppRequest.pr(function(){
+     $("body").addClass("loaded");
+     $(".screen_box").remove();
+     
+  });
+     var user = null;
+
+
+     AppRequest.ready(function(config){
+        $(".btnphone").attr("href",`tel:`+config.setting.pr.phone);
+     });
+
+ 
+
 
    
+   
+}
 
-    // if(!config.total_stock){
-    //   steps.total_stock = `<div class="lr">
-    //       <div>Nhập kho: Chưa có</div>
-    //       <div><span class="btn btn-xs btn-primary" data-router="">Cài đặt</span></div>
-    //     </div>`; 
-    // }
-    
-    //fired
-    $(document).trigger("onStepSetup",[steps]);
+function pickerProduct(options){
+    options=$.extend({},options,true);
 
-    var s = Object.values(steps);
-    if(s.length){
-       s =`<div class="stepactive"><div><img width="75" height="75" src="https://cdn-icons-png.flaticon.com/128/7224/7224308.png" /></div>
-       <p>Các bước cài đặt cửa hàng:</p>
-       <ul>${s.map(function(v){
-          return `<li>${v}</li>`;
-       }).join("")}</ul>
+
+
+    var str=`<div class="msgicon pageproduct">
+      <div class="flex-col center">
+           
+          <div class='flex'>
+                
+                <form>
+                    <div class="headproduct">
+                        <div class="imgblock">
+                            <div class="bg" style="background-image:url(${options.data.image})"></div>
+                        </div>
+                       <div class="mtb-8 priceblock lr"> 
+                            <div>
+                                <strong class="font-30">Giá: ${show_money_none(options.data.price||0)}</strong>
+                            </div>
+                            <div>
+                            </div>
+                       </div>
+                    </div>
+                    <div class="bodyproduct">
+                        <div class="description">
+                            ${options.data.description||options.data.desc||"Đang cập nhật..."}
+                        </div>
+                    </div>
+                </form>
+                <div class="msg"></div>  
+          </div>
        </div>
-        `;
-       alert(s,"Cài đặt cửa hàng");
-    }
+    </div>`;
+            var methods = tools();
+            
+            var settings={ 
+                title : options.data.title||options.data.name,
+                textYes: "Thêm vào giỏ hàng",
+                message :str,
+                callback : function(dialog,ok){
 
-
-    $(".PosMenu").on("click",function(){ 
-       $(document).trigger("PosMenu",[{opened:1}]);
-    });
-  });
-
-
+                    if(ok){
+                        
+                    }
+                   
+                    bootbox.hideAll();
+                }
+            };
+             alertDialog(settings).then(function(dialog){
+                methods.$ = dialog;
  
+
+                var process = function(data){
+                    dialog.bindData(data);
+                    settings.data = data;
+
+                    //check image or gallery
+                    try{
+                        data.gallery = JSON.parse(data.gallery);
+                    }catch(eee){
+                        dialog.find(".imgblock").html(`<div class="bg" style="background-image:url(${data.image})"></div>`)
+                    }
+                    if(data.gallery&&data.gallery.length){
+                       Swipper.Horizontal({
+                        data : data.gallery,
+                        ele: dialog.find(".imgblock"),
+                        renderItem : function(item){
+                            return `<div class="bg" style="background-image:url(${item})"></div>`;
+                        },
+                        renderThumbnailItem : function(item){
+                            return `<div class="bg" style="background-image:url(${item})"></div>`;
+                        },
+                        slideChange : function(){
+
+                        }
+                       });
+                    }
+                    //tabs
+                };
+
+                 
+                methods.info("Đang xử lý...");
+                //load san pham
+                AppRequest.post('api/product/detail/',{id:options.data.barcode},function(r){
+                    methods.hide();
+                    if(r.code){
+                        process(r.data);
+                    }else{
+                        methods.empty(); 
+                    }
+                });
+                
+              });
 }
 
-
-
-function LoadCSS(e){return new Promise(function(n,t){var o=document.createElement("link");o.rel="stylesheet",o.href=e,document.head.appendChild(o),o.onload=function(){n(),console.log("CSS has loaded!")}})}function LoadJS(e){return new Promise(function(n,t){var o=document.createElement("script");o.type="text/javascript",o.src=e,document.head.appendChild(o),o.onload=function(){n(),console.log("JS has loaded!")},o.onerror=function(){}})}
-
-// var root = document.location.host.includes(".byethost")?"https://"+document.location.host+"/":"/build/";
-var root = "/build/";
- 
- 
- 
-window.onload = function(){
-
-    document.querySelector(".imgbox").innerHTML =`<img src="${AppRequest.logo()}" width="125" alt="">`
-};
- 
-function setupTheme(){
-    (function(win){
-        var key = "setting_staff";
-        var settings = storage(key); 
-        win.AClient = {
-            settings: settings||{
-                synce_takeaway:1,
-                allow_print:1,
-                socket_url:'',
-                html_print:''
-            },
-            save : function(){
-                storage(key,this.settings); 
-            }
-        };
-        if(win.AClient.settings.html_print){
-            win.printTempate = decodeHTMLEntities(win.AClient.settings.bill_80||win.AClient.settings.html_print);
-        }
-        
-        
-
-        $(document).on("onUserLogout",function(e){
-          storage(key,'{}'); 
-        });
-    })(window);
-
-}
-
-LoadCSS(root+"app.min.css?t=1760009170").then(function(){
-   LoadJS(root+"app.min.js?i=1&t=1760009170").then(function(){ 
-    $("body").append(htmlbody());
-
-
-    setupTheme();
-
-
-    $(document).on("onApp",function(){ 
-        window.localStorage.setItem("_logo",AppRequest.logo());
-    });
-
-      main();
-
-      $("body").addClass("loaded");
-
-      LoadCSS(root+"/font.css?t=3",function(){});
-   });
-});
-
-
-
-
-// setInterval(function(){
-//     // AppCode.Report();
-//     try{
-//       window.AppCode.printHTML('<p>this is <b>html</b> test</p>');
-//     }catch(e){
-//        alert(e);
-//     }
-// },10000);
