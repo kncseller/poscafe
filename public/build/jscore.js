@@ -500,44 +500,14 @@ window.addEventListener("load", (event) => {
      
     // LoadCSS(root+"mine.min.css?t="+Date.now()).then(function(){
        LoadJS(root+"mine.min.js?i=1&t="+Date.now()).then(function(){ 
-         //{{coupon code "date"}}
-            Handlebars.registerHelper('coupon', function (code,date) {
-               if(!code)return "";
-               date = date||"30 April 2026";
 
-                return new Handlebars.SafeString(`<div class="cardbox">
-                <div class="main">
-                  <div class="coupon-rate">
-                    <h1>1000€</h1>
-                  </div>
-                  <div class="vertical"></div>
-                  <div class="content">
-                    <h2>${code}</h2>
-                    <p>Valid till ${date}</p>
-                  </div>
-                </div>
-                <div class="copy-button">
-                  <p>Valid for this contract globally !</p>
-                  <button onclick="copyIt()" class="copybtn">USE IT !</button>
-                </div>
-              </div>`);
-            });
-             
-          AppRequest.cache(function(){
-              var color =  AppRequest.cache.storage("_theme")||"default";
-           $("body").attr("data-color",color);
-          });
+        $(document).on("onShopError",function(e,msg){
 
-          //load language
-          if(window.initLanguage)initLanguage();
-          
+            alert(msg.error);
+        });
 
-          main();
-          
- 
-
-          $("body").addClass("loaded");
-           LoadJS("https://data.donggiatri.com/user.sdk.js?t=4343w53").then(function(){
+        AppRequest.ready(function(){
+            LoadJS("https://data.donggiatri.com/user.sdk.js?t=4343w53").then(function(){
           
              userSDK.getAuth().then(function(v){
               user = v;
@@ -617,6 +587,47 @@ window.addEventListener("load", (event) => {
                 });
             });
         });
+    });
+
+
+         //{{coupon code "date"}}
+            Handlebars.registerHelper('coupon', function (code,date) {
+               if(!code)return "";
+               date = date||"30 April 2026";
+
+                return new Handlebars.SafeString(`<div class="cardbox">
+                <div class="main">
+                  <div class="coupon-rate">
+                    <h1>1000€</h1>
+                  </div>
+                  <div class="vertical"></div>
+                  <div class="content">
+                    <h2>${code}</h2>
+                    <p>Valid till ${date}</p>
+                  </div>
+                </div>
+                <div class="copy-button">
+                  <p>Valid for this contract globally !</p>
+                  <button onclick="copyIt()" class="copybtn">USE IT !</button>
+                </div>
+              </div>`);
+            });
+             
+          AppRequest.cache(function(){
+              var color =  AppRequest.cache.storage("_theme")||"default";
+           $("body").attr("data-color",color);
+          });
+
+          //load language
+          if(window.initLanguage)initLanguage();
+          
+
+          main();
+          
+ 
+
+          $("body").addClass("loaded");
+         
        });
     });
 
@@ -848,9 +859,6 @@ function main(){
      });
 
  
-
-
-   
    
 }
 
